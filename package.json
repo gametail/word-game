@@ -1,0 +1,21 @@
+{
+  "name": "wordlroyale",
+  "version": "1.0.0",
+  "description": "",
+  "main": "index.js",
+  "scripts": {
+    "test": "echo \"Error: no test specified\" && exit 1",
+    "start": "concurrently \"npm run dev -w ./packages/client\" \"npm start -w ./packages/server\""
+  },
+  "keywords": [],
+  "author": "",
+  "license": "ISC",
+  "workspaces": [
+    "packages/server",
+    "packages/client"
+  ],
+  "devDependencies": {
+    "concurrently": "^8.0.1",
+    "typescript": "^5.0.4"
+  }
+}
