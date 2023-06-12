@@ -20,11 +20,11 @@ const GuessHistory: React.FC<IGuessHistory> = ({ history, name, self }) => {
           : "gap-1 p-1 rounded-xl min-w-[144px] min-h-[144px] max-h-[144px] "
       }`}
     >
-      {/* {!self && (
+      {!self && (
         <h2 className="absolute inset-x-0 top-0 font-bold text-center transition-opacity duration-150 place-self-start rounded-xl text-primary-content bg-gradient-to-b from-black hover:opacity-100 opacity-30">
           {name}
         </h2>
-      )} */}
+      )}
       {history?.map(({ word, result }, index) => (
         <Guess key={index} word={word} result={result} />
       ))}
@@ -68,6 +68,9 @@ const GuessForm = () => {
   const { socket, lobbies, gid } = useContext(SocketContext).SocketState;
   const [inputs, setInputs] = useState<string[]>(["", "", "", "", ""]);
   const [currentIndex, setCurrentIndex] = useState<number>(0);
+  const [matchLetters, setMatchLetters] = useState<string>("");
+  const [misplaceLetters, setMisplaceLetters] = useState<string>("");
+  const [mismatchLetters, setMismatchLetters] = useState<string>("");
   const inputRefs = useRef<Array<HTMLInputElement>>([]);
   const { selfIndex } = lobbies[gid];
 
@@ -80,13 +83,32 @@ const GuessForm = () => {
     socket.on("invlalid_guess", () => {
       console.log("invalid guess");
     });
-    socket.on("receive_guess", ({ playerIndex }: IReceiveGuess) => {
-      if (playerIndex === selfIndex) {
-        //TODO Clear input
-        setInputs(["", "", "", "", ""]);
-        setCurrentIndex(0);
+    socket.on(
+      "receive_guess",
+      ({ playerIndex, historyObject }: IReceiveGuess) => {
+        if (playerIndex === selfIndex) {
+          historyObject.result.forEach((r, i) => {
+            if (!historyObject.word) return;
+
+            const letter = historyObject.word[i];
+
+            if (r === "match" && !matchLetters.includes(letter)) {
+              setMatchLetters((letters) => letters + letter);
+            }
+            if (r === "misplace" && !misplaceLetters.includes(letter)) {
+              setMisplaceLetters((letters) => letters + letter);
+            }
+            if (r === "mismatch" && !mismatchLetters.includes(letter)) {
+              setMismatchLetters((letters) => letters + letter);
+            }
+          });
+
+          //TODO Clear input
+          setInputs(["", "", "", "", ""]);
+          setCurrentIndex(0);
+        }
       }
-    });
+    );
     // window.addEventListener("keydown", handleKeyDown);
 
     // return () => {
@@ -169,6 +191,11 @@ const GuessForm = () => {
           { content: "⟵", fn: handleBackspace },
           { content: "✓", fn: handleSubmit },
         ]}
+        keysEval={{
+          match: matchLetters,
+          mismatch: mismatchLetters,
+          misplace: misplaceLetters,
+        }}
       />
     </div>
   );
@@ -177,27 +204,57 @@ const GuessForm = () => {
 interface IKeyboard {
   keyRows: string[][];
   defaultInputFunction: (value: string) => void;
+  keysEval: { match: string; mismatch: string; misplace: string };
   specialKeys?: { content: string; fn: () => void }[];
-  keyRowsEval?: string[][];
 }
 const Keyboard: React.FC<IKeyboard> = ({
   keyRows,
   specialKeys,
   defaultInputFunction,
+  keysEval,
 }) => {
+  const { match, mismatch, misplace } = keysEval;
+  const textColors: { [key in TFeedback]: string } = {
+    match: "text-success-content",
+    mismatch: "text-neutral-content",
+    misplace: "text-warning-content",
+  };
+  const bgColors: { [key in TFeedback]: string } = {
+    match: "bg-success",
+    mismatch: "bg-neutral",
+    misplace: "bg-warning",
+  };
+
   return (
     <div className="flex flex-col items-center gap-2 ">
       {keyRows.map((row, i) => (
         <div className="flex gap-2 " key={i}>
-          {row.map((key, i2) => (
-            <button
-              key={`${i}${i2}`}
-              className="btn btn-primary btn-square "
-              onClick={() => defaultInputFunction(key)}
-            >
-              {key}
-            </button>
-          ))}
+          {row.map((key, i2) => {
+            const lowerCaseKey = key.toLocaleLowerCase();
+
+            const matchCol: string = match.includes(lowerCaseKey)
+              ? `${textColors["match"]} ${bgColors["match"]}`
+              : "";
+            const misplaceCol: string = misplace.includes(lowerCaseKey)
+              ? `${textColors["misplace"]} ${bgColors["misplace"]}`
+              : "";
+            const mismatchCol: string = mismatch.includes(lowerCaseKey)
+              ? `${textColors["mismatch"]} ${bgColors["mismatch"]}`
+              : "";
+
+            return (
+              <button
+                key={`${i}${i2}`}
+                className={`btn ${
+                  !mismatchCol ? "btn-primary" : "btn-disabled"
+                } btn-square  ${matchCol || misplaceCol || mismatchCol}
+              `}
+                onClick={() => defaultInputFunction(key)}
+              >
+                {key}
+              </button>
+            );
+          })}
         </div>
       ))}
       {specialKeys && (
@@ -243,7 +300,6 @@ const Game: React.FC<IGame> = () => {
       "receive_guess",
       ({ playerIndex, historyObject }: IReceiveGuess) => {
         console.log("new guess received");
-        console.log(history, "old");
 
         const newHistory = { ...history };
 
@@ -251,7 +307,7 @@ const Game: React.FC<IGame> = () => {
 
         setHistory(newHistory);
 
-        console.log(history, "new");
+        console.log(history);
 
         // setHistory(newHistory);
       }

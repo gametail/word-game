@@ -12,6 +12,8 @@ const Countdown: FC<ICountdown> = ({ roundStart, timeSetting }) => {
   const [fetchErrorText, setFetchErrorText] = useState<string>("");
 
   useEffect(() => {
+    if (timeSetting === 0) return;
+
     fetch("http://192.168.178.21:3001/time")
       .then((res) => res.json())
       .then((data) => {
@@ -28,7 +30,7 @@ const Countdown: FC<ICountdown> = ({ roundStart, timeSetting }) => {
   }, []);
 
   useEffect(() => {
-    if (!timeLeft) return;
+    if (timeSetting === 0 || !timeLeft) return;
 
     const interval = setInterval(() => {
       setTimeLeft((timeLeft) => timeLeft - 1);
@@ -40,12 +42,17 @@ const Countdown: FC<ICountdown> = ({ roundStart, timeSetting }) => {
     return () => clearInterval(interval);
   }, [timeLeft]);
 
-  if (!(timeLeft > 0))
+  if (timeSetting === 0) {
+    return <span className="mb-4 font-mono text-4xl">&infin;</span>;
+  }
+
+  if (!(timeLeft > 0)) {
     return (
       <span className="mb-4 font-mono text-4xl">
         {fetchErrorText || "00:00"}
       </span>
     );
+  }
 
   return (
     <span className="mb-4 font-mono text-4xl select-none countdown">

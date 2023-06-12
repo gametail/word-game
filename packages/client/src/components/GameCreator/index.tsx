@@ -148,9 +148,9 @@ const GameCreator = () => {
                 defaultValue={gameTimePerRound}
               >
                 <option disabled>Choose Round Length...</option>
-                {[60, 70, 80, 90, 100, 110, 120].map((time) => (
+                {[0, 60, 70, 80, 90, 100, 110, 120].map((time) => (
                   <option key={time} value={time}>
-                    {time} Seconds
+                    {time === 0 ? "Infinite" : `${time} Seconds`}
                   </option>
                 ))}
               </select>

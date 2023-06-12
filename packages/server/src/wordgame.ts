@@ -92,10 +92,16 @@ export class WordGame {
   }
 
   startRound(roundEnd: () => void, gameFinish: () => void) {
-    this.players.forEach((player) => (player.playerState = "guessing"));
+    this.players.forEach((player) => {
+      player.guessesLeft = this.gameSettings.guesses;
+      player.playerState = "guessing";
+    });
 
     this.word = getRandomWord();
     this.roundStart = new Date().getTime();
+
+    const gameSeconds =
+      this.gameSettings.time === 0 ? 600000 : this.gameSettings.time;
 
     setTimeout(() => {
       if (this.currentRound < this.gameSettings.rounds) {
@@ -107,7 +113,7 @@ export class WordGame {
         console.info("game finished");
         gameFinish();
       }
-    }, this.gameSettings.time * 1000);
+    }, gameSeconds * 1000);
   }
 
   join(
