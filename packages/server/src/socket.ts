@@ -130,6 +130,15 @@ export class ServerSocket {
     socket.on("leave_game", (gid: string) => {
       this.LeaveGame(gid, socket.id);
     });
+
+    //Leave a game instance
+    socket.on("start_game", (gid: string) => {
+      this.StartGame(gid, socket.id);
+    });
+
+    socket.on("check_guess", (guess: string) => {
+      const result = this.CheckGuess(guess, socket.id);
+    });
   };
   GenerateGenericUsername = (): string =>
     "New User " + this.allTimeUsers.toString();
@@ -288,11 +297,93 @@ export class ServerSocket {
     const users = this.GetSocketIdsOfUsers();
     const game = this.gameInstances[gid];
 
-    users.forEach((user) => {
-      this.SendMessage("update_lobby", [user], {
-        [gid]: game.getGameDTO(user),
+    if (game) {
+      users.forEach((user) => {
+        if (user) {
+          this.SendMessage("update_lobby", [user], {
+            [gid]: game.getGameDTO(user),
+          });
+        }
       });
-    });
+    }
+  };
+
+  StartGame = (gid: string, sid: string) => {
+    const uid = this.GetUidFromSocketId(sid);
+    const user = this.users[uid];
+
+    if (user) {
+      if (user.currentGame === gid) {
+        const game = this.gameInstances[gid];
+
+        const gameFinish = () => {
+          this.UpdateFrontendLobby(gid);
+        };
+
+        const roundEnd = () => {};
+        const started = game.start(sid, roundEnd, gameFinish);
+        if (started) {
+          this.UpdateFrontendLobby(gid);
+        }
+      } else {
+        console.info(`${sid} not in a/this game`);
+      }
+    }
+  };
+
+  CheckGuess = (guess: string, sid: string) => {
+    const uid = this.GetUidFromSocketId(sid);
+    const user = this.users[uid];
+    const gid = user.currentGame;
+    const game = this.gameInstances[gid];
+
+    if (guess.length !== 5) {
+      this.SendMessage("invalid_guess", [sid]);
+      return;
+    }
+
+    console.info(`${sid} send a guess: ${guess}`);
+
+    if (game) {
+      const player = game.getPlayer(sid);
+      if (player.playerState !== "guessing" || player.guessesLeft <= 0) {
+        this.SendMessage("no_guesses", [sid]);
+        return;
+      }
+
+      const { correct, result, invalid } = game.checkGuess(sid, guess);
+
+      //word not on list
+      if (invalid) {
+        this.SendMessage("invalid_guess", [sid]);
+        return;
+      }
+
+      this.UpdateFrontendLobby(gid);
+
+      if (correct) {
+        //TODO trigger player correct screen
+      }
+
+      const playerRequestIndex = game.getPlayerIndex(sid);
+      const players = game.getPlayers();
+
+      players.forEach((player, index) => {
+        if (playerRequestIndex === index) {
+          this.SendMessage("receive_guess", [player.sid], {
+            playerIndex: playerRequestIndex,
+            historyObject: { result, word: guess },
+          });
+          console.log("A");
+        } else {
+          this.SendMessage("receive_guess", [player.sid], {
+            playerIndex: playerRequestIndex,
+            historyObject: { result },
+          });
+          console.log("B");
+        }
+      });
+    }
   };
 
   /**

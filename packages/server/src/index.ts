@@ -50,6 +50,11 @@ app.get("/ping", (req, res, next) => {
   return res.status(200).json({ hello: "world!" });
 });
 
+//get Time
+app.get("/time", (req, res, next) => {
+  return res.status(200).json({ time: new Date().getTime() });
+});
+
 //Socket information
 app.get("/status", (req, res, next) => {
   return res.status(200).json({

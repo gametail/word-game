@@ -1,6 +1,6 @@
 import { Link, Outlet, Route, Routes } from "react-router-dom";
 import Home from "./pages/Home";
-import Game from "./pages/Game";
+import GameTab from "./pages/GameTab";
 import NavBar from "./components/NavBar";
 import GameBrowser from "./pages/GameBrowser";
 
@@ -17,7 +17,7 @@ function App() {
       </NavBar>
       <Routes>
         <Route path="/" element={<Home />} />
-        <Route path="/game" element={<Game />}>
+        <Route path="/game" element={<GameTab />}>
           {/* <Route path="/game/:gid" element={<Game />} /> */}
         </Route>
 

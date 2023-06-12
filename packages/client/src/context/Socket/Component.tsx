@@ -23,8 +23,9 @@ const SocketContextComponent: React.FC<ISocketContextComponentProps> = ({
   // const [loading, setLoading] = useState(true);
 
   // const socket = useSocket("ws://localhost:3001", {
+  // const socket = useSocket("ws://172.20.0.59:3001", {
   const socket = useSocket("ws://192.168.178.21:3001", {
-    // reconnectionAttempts: 5,
+    reconnectionAttempts: 5,
     reconnectionDelay: 5000,
     autoConnect: false,
   });

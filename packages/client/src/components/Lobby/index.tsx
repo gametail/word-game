@@ -1,15 +1,13 @@
 import { useContext, useEffect } from "react";
 import UserAvatar from "../UserAvatar";
-import SocketContext from "../../context/Socket/context";
-import GameCreator from "../GameCreator";
-import { Link } from "react-router-dom";
+import SocketContext, { IPlayerDTO } from "../../context/Socket/context";
 
 const Lobby = () => {
   const { gid, lobbies, socket } = useContext(SocketContext).SocketState;
 
-  let users: string[] = [];
+  let users: IPlayerDTO[] = [];
   let leaderIndex: number = -1;
-  let selfIndex: number | undefined;
+  let selfIndex: number = -1;
 
   if (gid) {
     users = lobbies[gid]?.players;
@@ -23,22 +21,25 @@ const Lobby = () => {
   };
   //start the game
   const startGame = () => {
-    socket?.emit("start_game");
+    socket?.emit("start_game", gid);
   };
 
-  return gid ? (
+  return (
     <div className="flex flex-col items-center h-full">
       {gid && (
-        <h1 className="my-6 text-4xl font-bold">
-          {lobbies[gid].gameSettings.name}
-        </h1>
+        <div>
+          <h1 className="my-6 text-4xl font-bold text-center">
+            {lobbies[gid].gameSettings.name}
+          </h1>
+          <h2 className="text-center ">Status:{lobbies[gid].gameState}</h2>
+        </div>
       )}
       <div className="flex justify-center gap-10 my-8">
         {users?.map((user, index) => {
           return (
             <UserAvatar
               key={index}
-              name={user}
+              name={user.username}
               self={index === selfIndex}
               leader={index === leaderIndex}
             />
@@ -55,14 +56,6 @@ const Lobby = () => {
           Leave
         </button>
       </div>
-    </div>
-  ) : (
-    <div className="flex flex-col items-center justify-center h-full">
-      <h1 className="my-5 text-4xl font-bold">You must join a lobby first.</h1>
-      <GameCreator />
-      <Link to="/browser" className="btn btn-wide btn-primary">
-        Browser
-      </Link>
     </div>
   );
 };

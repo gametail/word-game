@@ -33,7 +33,7 @@ const GameBrowser = () => {
   };
 
   return (
-    <div className="flex flex-col h-full justify-evenly">
+    <div className="flex flex-col h-full ">
       <table className="table w-full table-zebra ">
         {/* head */}
         <thead>
@@ -64,7 +64,9 @@ const GameBrowser = () => {
                   {gameState}
                 </td>
                 <td>{gameSettings.name}</td>
-                <td className="w-32 text-center ">{players[leaderIndex]}</td>
+                <td className="w-32 text-center ">
+                  {players[leaderIndex].username}
+                </td>
                 <td className="w-24 text-center">{`${players.length}/${gameSettings.maxPlayers}`}</td>
               </tr>
             );

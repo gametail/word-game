@@ -5,14 +5,13 @@
   "main": "index.js",
   "scripts": {
     "test": "echo \"Error: no test specified\" && exit 1",
-    "start": "concurrently \"npm run dev -w ./packages/client\" \"npm start -w ./packages/server\""
+    "start": "concurrently \"npm start -w ./packages/server\" \"npm run dev -w ./packages/client\""
   },
   "keywords": [],
   "author": "",
   "license": "ISC",
   "workspaces": [
-    "packages/server",
-    "packages/client"
+    "packages/*"
   ],
   "devDependencies": {
     "concurrently": "^8.0.1",
