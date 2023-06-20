@@ -1,7 +1,11 @@
 import { useContext, useEffect, useRef, useState } from "react";
-import SocketContext from "../../context/Socket/context";
+import SocketContext, {
+  IHistoryObject,
+  TFeedback,
+} from "../../context/Socket/context";
 import Countdown from "../Countdown";
 import StatTracker from "../StatTracker";
+import { RiCheckboxCircleFill, RiDeleteBack2Fill } from "react-icons/ri";
 
 interface IGame {}
 interface IGuessHistory {
@@ -11,31 +15,59 @@ interface IGuessHistory {
 }
 
 const GuessHistory: React.FC<IGuessHistory> = ({ history, name, self }) => {
+  const guessHistoryEndRef = useRef<HTMLDivElement>(null);
+
+  const scrollToBottom = () => {
+    window.requestAnimationFrame(() =>
+      guessHistoryEndRef.current?.scrollIntoView({ behavior: "smooth" })
+    );
+  };
+
+  useEffect(() => {
+    console.log(guessHistoryEndRef.current);
+    scrollToBottom();
+  }, [history]);
+
+  useEffect(() => {}, [history]);
+
   return (
     <div
-      //   className={`flex flex-col bg-base-200 w-fit h-fit ${
-      className={`relative flex flex-col justify-end bg-primary w-fit h-fit overflow-y-auto ${
-        self
-          ? "gap-2 p-2 rounded-2xl min-w-[528px] min-h-[528px] max-h-[528px] "
-          : "gap-1 p-1 rounded-xl min-w-[144px] min-h-[144px] max-h-[144px] "
-      }`}
+      className={`relative bg-primary min-w-fit max-h-fit ${
+        self ? "rounded-2xl" : "rounded-xl "
+      } overflow-y-auto`}
     >
       {!self && (
         <h2 className="absolute inset-x-0 top-0 font-bold text-center transition-opacity duration-150 place-self-start rounded-xl text-primary-content bg-gradient-to-b from-black hover:opacity-100 opacity-30">
           {name}
         </h2>
       )}
-      {history?.map(({ word, result }, index) => (
-        <Guess key={index} word={word} result={result} />
-      ))}
+      <div
+        className={`flex flex-col ${
+          self ? "p-2 min-w-[528px] h-[528px]" : "p-1 min-w-[144px] h-[144px]"
+        }`}
+      >
+        {history.map(({ word, result }, index) => (
+          <Guess
+            className={index === 0 ? "mt-auto" : self ? " mt-2" : "mt-1"}
+            key={index}
+            word={word}
+            result={result}
+          />
+        ))}
+        <div
+          ref={guessHistoryEndRef}
+          className={history.length > 5 ? "pb-2 " : ""}
+        />
+      </div>
     </div>
   );
 };
 interface IGuess {
+  className?: string;
   result: TFeedback[];
   word?: string;
 }
-const Guess: React.FC<IGuess> = ({ word, result }) => {
+const Guess: React.FC<IGuess> = ({ className, word, result }) => {
   const textColors: { [key in TFeedback]: string } = {
     match: "text-success-content",
     mismatch: "text-neutral-content",
@@ -48,7 +80,7 @@ const Guess: React.FC<IGuess> = ({ word, result }) => {
   };
 
   return (
-    <div className={`flex  ${word ? " gap-2 " : " gap-1"}`}>
+    <div className={`${className} flex ${word ? " gap-2" : " gap-1"}`}>
       {result.map((letterResult, index) => (
         <div
           className={`flex items-center justify-center ${
@@ -65,14 +97,14 @@ const Guess: React.FC<IGuess> = ({ word, result }) => {
   );
 };
 const GuessForm = () => {
-  const { socket, lobbies, gid } = useContext(SocketContext).SocketState;
+  const { socket } = useContext(SocketContext).SocketState;
   const [inputs, setInputs] = useState<string[]>(["", "", "", "", ""]);
   const [currentIndex, setCurrentIndex] = useState<number>(0);
   const [matchLetters, setMatchLetters] = useState<string>("");
   const [misplaceLetters, setMisplaceLetters] = useState<string>("");
   const [mismatchLetters, setMismatchLetters] = useState<string>("");
   const inputRefs = useRef<Array<HTMLInputElement>>([]);
-  const { selfIndex } = lobbies[gid];
+  const [playInvalidAnim, setPlayInvalidAnim] = useState<boolean>(false);
 
   useEffect(() => {
     if (inputRefs.current[currentIndex]) {
@@ -80,33 +112,66 @@ const GuessForm = () => {
     }
 
     if (!socket) return;
-    socket.on("invlalid_guess", () => {
-      console.log("invalid guess");
+
+    socket.on("reset_round", () => {
+      setInputs(["", "", "", "", ""]);
+      setCurrentIndex(0);
+      setMatchLetters("");
+      setMisplaceLetters("");
+      setMismatchLetters("");
     });
+
     socket.on(
-      "receive_guess",
-      ({ playerIndex, historyObject }: IReceiveGuess) => {
-        if (playerIndex === selfIndex) {
-          historyObject.result.forEach((r, i) => {
-            if (!historyObject.word) return;
-
-            const letter = historyObject.word[i];
-
-            if (r === "match" && !matchLetters.includes(letter)) {
-              setMatchLetters((letters) => letters + letter);
-            }
-            if (r === "misplace" && !misplaceLetters.includes(letter)) {
-              setMisplaceLetters((letters) => letters + letter);
-            }
-            if (r === "mismatch" && !mismatchLetters.includes(letter)) {
-              setMismatchLetters((letters) => letters + letter);
-            }
-          });
-
-          //TODO Clear input
-          setInputs(["", "", "", "", ""]);
-          setCurrentIndex(0);
+      "guess_result",
+      ({
+        evaluation,
+        guess,
+        result,
+      }: {
+        evaluation: TGuessResult;
+        guess?: string;
+        result?: TFeedback[];
+      }) => {
+        if (evaluation === "invalid") {
+          //TODO Trigger anim
+          setPlayInvalidAnim(true);
+          return;
         }
+
+        if (result == undefined || guess == undefined) return;
+
+        result.forEach((r, i) => {
+          const letter = guess[i];
+
+          if (r === "match" && !matchLetters.includes(letter)) {
+            setMatchLetters((letters) => {
+              if (!letters.includes(letter)) {
+                return letters + letter;
+              }
+              return letters;
+            });
+          }
+          if (r === "misplace" && !misplaceLetters.includes(letter)) {
+            setMisplaceLetters((letters) => {
+              if (!letters.includes(letter)) {
+                return letters + letter;
+              }
+              return letters;
+            });
+          }
+          if (r === "mismatch" && !mismatchLetters.includes(letter)) {
+            setMismatchLetters((letters) => {
+              if (!letters.includes(letter)) {
+                return letters + letter;
+              }
+              return letters;
+            });
+          }
+        });
+
+        //TODO Clear input
+        setInputs(["", "", "", "", ""]);
+        setCurrentIndex(0);
       }
     );
     // window.addEventListener("keydown", handleKeyDown);
@@ -157,18 +222,26 @@ const GuessForm = () => {
   };
   const handleSubmit = () => {
     const guess = inputs.join("").toLocaleLowerCase();
-    console.log(guess);
     if (guess) {
       socket?.emit("check_guess", guess);
+    } else {
+      setPlayInvalidAnim(true);
     }
   };
 
   return (
     <div>
-      <div className="flex gap-4 p-2 m-2">
+      <div
+        onAnimationEnd={() => setPlayInvalidAnim(false)}
+        className={`flex gap-4 p-2 m-2  ${
+          playInvalidAnim && " animate-shake animate-duration-200 animate-twice"
+        }`}
+      >
         {inputs.map((input, index) => (
           <input
-            className="w-24 h-24 text-6xl font-extrabold text-center capitalize rounded-2xl input input-bordered input-primary"
+            className={`w-24 h-24 text-6xl font-extrabold text-center capitalize rounded-2xl input input-bordered input-primary transition-colors ${
+              playInvalidAnim && " border-error focus:outline-error"
+            }`}
             type="text"
             key={index}
             ref={(ref) => (inputRefs.current[index] = ref as HTMLInputElement)}
@@ -187,15 +260,13 @@ const GuessForm = () => {
           ["Y", "X", "C", "V", "B", "N", "M"],
         ]}
         defaultInputFunction={handleInput}
-        specialKeys={[
-          { content: "⟵", fn: handleBackspace },
-          { content: "✓", fn: handleSubmit },
-        ]}
         keysEval={{
           match: matchLetters,
           mismatch: mismatchLetters,
           misplace: misplaceLetters,
         }}
+        backspaceFn={handleBackspace}
+        submitFn={handleSubmit}
       />
     </div>
   );
@@ -205,13 +276,15 @@ interface IKeyboard {
   keyRows: string[][];
   defaultInputFunction: (value: string) => void;
   keysEval: { match: string; mismatch: string; misplace: string };
-  specialKeys?: { content: string; fn: () => void }[];
+  backspaceFn: () => void;
+  submitFn: () => void;
 }
 const Keyboard: React.FC<IKeyboard> = ({
   keyRows,
-  specialKeys,
   defaultInputFunction,
   keysEval,
+  backspaceFn,
+  submitFn,
 }) => {
   const { match, mismatch, misplace } = keysEval;
   const textColors: { [key in TFeedback]: string } = {
@@ -245,7 +318,7 @@ const Keyboard: React.FC<IKeyboard> = ({
             return (
               <button
                 key={`${i}${i2}`}
-                className={`btn ${
+                className={`btn text-xl font-bold ${
                   !mismatchCol ? "btn-primary" : "btn-disabled"
                 } btn-square  ${matchCol || misplaceCol || mismatchCol}
               `}
@@ -257,87 +330,43 @@ const Keyboard: React.FC<IKeyboard> = ({
           })}
         </div>
       ))}
-      {specialKeys && (
-        <div className="flex gap-2 ">
-          {specialKeys.map(({ content, fn }, index) => (
-            <div className="w-32 h-12 btn btn-primary" key={index} onClick={fn}>
-              {content}
-            </div>
-          ))}
+      <div className="flex gap-2 ">
+        <div className="w-32 h-12 btn btn-primary" onClick={backspaceFn}>
+          <RiDeleteBack2Fill className="text-2xl " />
         </div>
-      )}
+        <div className="w-32 h-12 btn btn-primary" onClick={submitFn}>
+          <RiCheckboxCircleFill className="text-2xl" />
+        </div>
+      </div>
     </div>
   );
 };
 
-interface IReceiveGuess {
-  playerIndex: number;
-  historyObject: IHistoryObject;
-}
-type TFeedback = "match" | "misplace" | "mismatch";
-
-interface IHistoryObject {
-  result: TFeedback[];
-  word?: string;
-}
-interface IHistoryState {
-  [playerIndex: number]: IHistoryObject[];
-}
+type TGuessResult = "correct" | "incorrect" | "invalid";
 const Game: React.FC<IGame> = () => {
-  const { socket, lobbies, gid } = useContext(SocketContext).SocketState;
+  const { lobbies, gid } = useContext(SocketContext).SocketState;
   const lobby = lobbies[gid];
-  const [history, setHistory] = useState<IHistoryState>(
-    lobby.players.reduce((obj, _, index) => {
-      obj[index] = [];
-      return obj;
-    }, {} as Record<number, any>)
-  );
-
-  useEffect(() => {
-    if (!socket) return;
-
-    socket.on(
-      "receive_guess",
-      ({ playerIndex, historyObject }: IReceiveGuess) => {
-        console.log("new guess received");
-
-        const newHistory = { ...history };
-
-        newHistory[playerIndex].push(historyObject);
-
-        setHistory(newHistory);
-
-        console.log(history);
-
-        // setHistory(newHistory);
-      }
-    );
-
-    socket.on("correct_word", () => {
-      //Round win Animation
-      console.log("you won the round");
-    });
-  }, []);
+  const { players, selfIndex } = lobby;
 
   return (
     <div className="flex flex-col h-full">
       {/* <div className="flex gap-5 m-2 bg-green-700"> */}
       {lobby.players.length > 1 && (
-        <div className="flex gap-5 p-2 m-2 bg-base-300 rounded-2xl min-h-[160px]">
-          {lobby.players.map(
-            ({ username }, index) =>
-              index !== lobby.selfIndex && (
+        <div className="flex gap-5 p-2 m-2 bg-base-300 rounded-2xl min-h-[160px] w-auto overflow-x-auto overflow-y-hidden">
+          {players.map(
+            ({ username, guessHistory }, index) =>
+              index !== selfIndex && (
                 <GuessHistory
                   key={index}
-                  history={history[index]}
+                  history={guessHistory}
                   name={username}
                 />
               )
           )}
         </div>
       )}
-      <div className="flex items-center justify-center h-full gap-16">
-        <GuessHistory history={history[lobby.selfIndex]} self />
+      <div className="flex items-center justify-center h-full gap-16 pb-2">
+        <GuessHistory history={players[selfIndex].guessHistory} self />
         <div className="flex flex-col items-center justify-center h-full ">
           <h1 className="flex flex-col items-center text-2xl font-bold">
             {lobby.roundStart && (
@@ -346,13 +375,9 @@ const Game: React.FC<IGame> = () => {
                 timeSetting={lobby.gameSettings.time}
               />
             )}
-            {/* <div className="flex gap-10 p-2 mt-4">
-              <span>Round: {lobby.currentRound}</span>
-              <span>Guesses: {lobby.players[lobby.selfIndex].guesses}</span>
-              <span>Score: {lobby.players[lobby.selfIndex].score}</span>
-            </div> */}
             <StatTracker />
           </h1>
+
           <GuessForm />
         </div>
       </div>

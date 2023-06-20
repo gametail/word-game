@@ -27,7 +27,7 @@ const Countdown: FC<ICountdown> = ({ roundStart, timeSetting }) => {
         setSecondsLeft(startTimeSec);
       })
       .catch((err) => setFetchErrorText("Could not fetch time"));
-  }, []);
+  }, [roundStart]);
 
   useEffect(() => {
     if (timeSetting === 0 || !timeLeft) return;

@@ -7,8 +7,17 @@ export interface IPlayer extends IUser {
   guessesLeft: number;
   playerState: PlayerState;
   score: number;
+  guessHistory: IHistoryObject[];
 }
-type Feedback = "match" | "misplace" | "mismatch";
+
+type TPayloadMap = { [sid: string]: Object };
+type TPayload = Object | TPayloadMap;
+
+type TFeedback = "match" | "misplace" | "mismatch";
+interface IHistoryObject {
+  result: TFeedback[];
+  word?: string;
+}
 
 const MAX_PLAYERS = 20;
 const MIN_PLAYERS = 1;
@@ -44,9 +53,11 @@ export interface IPlayerDTO {
   score: number;
   guesses: number;
   state: PlayerState;
+  guessHistory: IHistoryObject[];
 }
 
 export class WordGame {
+  gid: string;
   players: IPlayer[];
   leaderIndex: number;
   gameState: GameState = "initializing";
@@ -54,21 +65,53 @@ export class WordGame {
   timeout: NodeJS.Timeout | undefined;
   currentRound: number;
   roundStart: number | undefined;
-  word: string;
+  words: string[];
+  SendMessageFn: (eventName: string, users: string[], payload?: Object) => void;
 
-  constructor(gameSettings?: IGameSettings) {
+  constructor(
+    gid: string,
+    SendMessageFn: (
+      eventName: string,
+      users: string[],
+      payload?: Object
+    ) => void,
+    gameSettings?: IGameSettings
+  ) {
+    this.gid = gid;
     this.players = [];
     this.gameState = "lobby";
     this.leaderIndex = 0;
     this.currentRound = 1;
     this.roundStart = undefined;
-    this.word = "";
+    this.words = [];
     this.timeout = undefined;
+    this.SendMessageFn = SendMessageFn;
 
     if (gameSettings) this.gameSettings = gameSettings;
   }
 
-  start(sid: string, roundEnd: () => void, gameFinish: () => void): boolean {
+  SendMessageToPlayers(
+    eventName: string,
+    players?: IPlayer[],
+    payload?: TPayload
+  ) {
+    let sids: string[];
+    if (players) {
+      sids = players.map(({ sid }) => sid);
+    } else {
+      sids = this.players.map(({ sid }) => sid);
+    }
+
+    sids.forEach((sid) => {
+      if (payload) {
+        this.SendMessageFn(eventName, [sid], payload[sid] || payload);
+      } else {
+        this.SendMessageFn(eventName, [sid]);
+      }
+    });
+  }
+
+  start(sid: string): boolean {
     if (this.gameState === "initializing") {
       console.info("cant start, game is still initializing");
       return false;
@@ -82,7 +125,8 @@ export class WordGame {
     if (playerIndex === this.leaderIndex) {
       this.gameState = "ingame";
 
-      this.startRound(roundEnd, gameFinish);
+      this.resetGame();
+      this.startRound();
 
       return true;
     } else {
@@ -91,29 +135,59 @@ export class WordGame {
     }
   }
 
-  startRound(roundEnd: () => void, gameFinish: () => void) {
+  startRound() {
     this.players.forEach((player) => {
       player.guessesLeft = this.gameSettings.guesses;
       player.playerState = "guessing";
+      player.guessHistory = [];
     });
 
-    this.word = getRandomWord();
+    this.words.push(getRandomWord());
+
     this.roundStart = new Date().getTime();
 
     const gameSeconds =
       this.gameSettings.time === 0 ? 600000 : this.gameSettings.time;
 
-    setTimeout(() => {
+    this.timeout = setTimeout(() => {
+      if (this.players.length === 0) return;
+
       if (this.currentRound < this.gameSettings.rounds) {
         this.currentRound++;
-        roundEnd();
-        this.startRound(roundEnd, gameFinish);
+        this.startRound();
       } else {
         this.gameState = "lobby";
+
+        const test = this.players.reduce((acc, { sid }) => {
+          acc[sid] = { [this.gid]: this.getGameDTO(sid) };
+          return acc;
+        }, {} as TPayloadMap);
+
+        console.log(test);
+
+        // this.SendMessage();
+        this.SendMessageToPlayers("update_lobby", this.players, test);
+        this.SendMessageToPlayers("reset_round", this.players);
+
         console.info("game finished");
-        gameFinish();
       }
     }, gameSeconds * 1000);
+
+    // this.SendMessage();
+    const test = this.players.reduce((acc, { sid }) => {
+      acc[sid] = { [this.gid]: this.getGameDTO(sid) };
+      return acc;
+    }, {} as TPayloadMap);
+
+    console.log(test);
+
+    this.SendMessageToPlayers("update_lobby", this.players, test);
+    this.SendMessageToPlayers("reset_round", this.players);
+  }
+  resetGame() {
+    this.currentRound = 1;
+    this.roundStart = undefined;
+    this.words = [];
   }
 
   join(
@@ -153,6 +227,7 @@ export class WordGame {
       score: 0,
       guessesLeft: this.gameSettings.guesses,
       playerState: "waiting",
+      guessHistory: [],
     });
     user.currentGame = gid;
   }
@@ -177,6 +252,9 @@ export class WordGame {
 
   getPlayers(): IPlayer[] {
     return this.players;
+  }
+  getCurrentWord(): string {
+    return this.words[this.currentRound - 1];
   }
   isGameFull(): boolean {
     return this.players.length >= this.gameSettings.maxPlayers;
@@ -206,22 +284,32 @@ export class WordGame {
     return this.gameSettings;
   }
   getGameDTO(sid?: string): IGameDTO {
-    const playersDTO: IPlayerDTO[] = this.getPlayers().map((player) => {
-      return {
+    const selfIndex = this.getPlayerIndex(sid);
+
+    const playersDTO: IPlayerDTO[] = this.getPlayers().map((player, index) => {
+      const playerDTO = {
         username: player.username,
         score: player.score,
         guesses: player.guessesLeft,
         state: player.playerState,
-      };
-    });
+        guessHistory: player.guessHistory.map((historyObject) => {
+          const newHistoryObject = { ...historyObject };
+          if (selfIndex !== -1 && index !== selfIndex) {
+            delete newHistoryObject.word;
+          }
 
-    const selfIndex = this.getPlayerIndex(sid);
+          return newHistoryObject;
+        }),
+      };
+
+      return playerDTO;
+    });
 
     const gameDTO: IGameDTO = {
       gameState: this.gameState,
       gameSettings: { ...this.gameSettings },
       leaderIndex: this.leaderIndex,
-      selfIndex,
+      selfIndex: selfIndex,
       players: playersDTO,
       roundStart: this.roundStart,
       currentRound: this.currentRound,
@@ -252,6 +340,29 @@ export class WordGame {
     const playerStates = this.players.map((p) => p.playerState);
     if (!playerStates.includes("guessing")) {
       //TODO Start next Round because all players are waiting
+      if (this.timeout) {
+        clearTimeout(this.timeout);
+        this.timeout = undefined;
+
+        if (this.currentRound < this.gameSettings.rounds) {
+          this.currentRound++;
+          this.startRound();
+        } else {
+          this.gameState = "lobby";
+
+          this.SendMessageToPlayers(
+            "update_lobby",
+            this.players,
+            this.players.reduce((acc, { sid }) => {
+              acc[sid] = { [this.gid]: this.getGameDTO(sid) };
+              return acc;
+            }, {} as TPayloadMap)
+          );
+          this.SendMessageToPlayers("reset_round", this.players);
+
+          console.info("game finished");
+        }
+      }
     }
   }
   calculateScore(player: IPlayer) {
@@ -265,8 +376,8 @@ export class WordGame {
     return score;
   }
 
-  compareWord(guess: string, solution: string): Feedback[] {
-    const matches = new Array<Feedback>(5).fill("mismatch");
+  compareWord(guess: string, solution: string): TFeedback[] {
+    const matches = new Array<TFeedback>(5).fill("mismatch");
 
     for (let i = 0; i < guess.length; i++) {
       const g = guess[i];
@@ -311,50 +422,41 @@ export class WordGame {
   checkGuess(
     sid: string,
     guess: string
-  ): {
-    correct: boolean;
-    result?: Feedback[];
-    invalid: boolean;
-  } {
+  ): { evaluation: "correct" | "incorrect" | "invalid"; result?: TFeedback[] } {
     const player = this.getPlayer(sid);
 
     if (IsInList(guess)) {
-      if (this.word === guess) {
+      if (this.getCurrentWord() === guess) {
         player.score = this.calculateScore(player);
+        console.log(player.guessHistory);
+        const result: TFeedback[] = [
+          "match",
+          "match",
+          "match",
+          "match",
+          "match",
+        ];
+        player.guessHistory.push({
+          result,
+          word: guess,
+        });
+        console.log(player.guessHistory);
         this.changePlayerState(sid, "waiting");
 
-        return {
-          correct: true,
-          result: ["match", "match", "match", "match", "match"],
-          invalid: false,
-        };
+        return { evaluation: "correct", result };
       } else {
         this.reducePlayerGuesses(sid);
 
-        const result = this.compareWord(guess, this.word);
-        return {
-          correct: false,
+        const result = this.compareWord(guess, this.getCurrentWord());
+        player.guessHistory.push({
           result,
-          invalid: false,
-        };
+          word: guess,
+        });
+        console.log(player.guessHistory);
+        return { evaluation: "incorrect", result };
       }
     } else {
-      return { correct: false, invalid: true };
+      return { evaluation: "invalid" };
     }
   }
-
-  // updateScore(pid: string, scoreDelta: number): void {
-  //   const player = this.getPlayer(pid);
-  //   if (player) {
-  //     player.score += scoreDelta;
-  //   }
-  // }
-
-  // getScore(pid: string): number | undefined {
-  //   const player = this.getPlayer(pid);
-  //   if (player) {
-  //     return player.score;
-  //   }
-  //   return undefined;
-  // }
 }

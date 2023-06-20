@@ -207,9 +207,8 @@ export class ServerSocket {
       return;
     }
 
-    const newGame = new WordGame(gameSettings);
-
     const gid = randomUUID();
+    const newGame = new WordGame(gid, this.SendMessage, gameSettings);
     this.gameInstances[gid] = newGame;
 
     //if falsy name provided via gamesettings
@@ -315,16 +314,17 @@ export class ServerSocket {
     if (user) {
       if (user.currentGame === gid) {
         const game = this.gameInstances[gid];
+        const players = game.players.map((p) => p.sid);
 
-        const gameFinish = () => {
+        const gameUpdate = () => {
           this.UpdateFrontendLobby(gid);
+          this.SendMessage("reset_round", players);
         };
 
-        const roundEnd = () => {};
-        const started = game.start(sid, roundEnd, gameFinish);
-        if (started) {
-          this.UpdateFrontendLobby(gid);
-        }
+        const started = game.start(sid);
+        // if (started) {
+        //   this.UpdateFrontendLobby(gid);
+        // }
       } else {
         console.info(`${sid} not in a/this game`);
       }
@@ -332,17 +332,17 @@ export class ServerSocket {
   };
 
   CheckGuess = (guess: string, sid: string) => {
+    console.info(`${sid} send a guess: ${guess}`);
+    if (guess.length !== 5) {
+      console.info(`guess: ${guess} of ${sid} invalid length`);
+      this.SendMessage("guess_result", [sid], { evaluation: "invalid" });
+      return;
+    }
+
     const uid = this.GetUidFromSocketId(sid);
     const user = this.users[uid];
     const gid = user.currentGame;
     const game = this.gameInstances[gid];
-
-    if (guess.length !== 5) {
-      this.SendMessage("invalid_guess", [sid]);
-      return;
-    }
-
-    console.info(`${sid} send a guess: ${guess}`);
 
     if (game) {
       const player = game.getPlayer(sid);
@@ -351,38 +351,15 @@ export class ServerSocket {
         return;
       }
 
-      const { correct, result, invalid } = game.checkGuess(sid, guess);
+      const { evaluation, result } = game.checkGuess(sid, guess);
 
-      //word not on list
-      if (invalid) {
-        this.SendMessage("invalid_guess", [sid]);
+      if (evaluation !== "invalid") {
+        this.UpdateFrontendLobby(gid);
+        this.SendMessage("guess_result", [sid], { evaluation, guess, result });
         return;
       }
 
-      this.UpdateFrontendLobby(gid);
-
-      if (correct) {
-        //TODO trigger player correct screen
-      }
-
-      const playerRequestIndex = game.getPlayerIndex(sid);
-      const players = game.getPlayers();
-
-      players.forEach((player, index) => {
-        if (playerRequestIndex === index) {
-          this.SendMessage("receive_guess", [player.sid], {
-            playerIndex: playerRequestIndex,
-            historyObject: { result, word: guess },
-          });
-          console.log("A");
-        } else {
-          this.SendMessage("receive_guess", [player.sid], {
-            playerIndex: playerRequestIndex,
-            historyObject: { result },
-          });
-          console.log("B");
-        }
-      });
+      this.SendMessage("guess_result", [sid], { evaluation });
     }
   };
 

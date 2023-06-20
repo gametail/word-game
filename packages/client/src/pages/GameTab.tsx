@@ -7,7 +7,6 @@ import Game from "../components/Game";
 
 const GameTab = () => {
   const { gid, lobbies } = useContext(SocketContext).SocketState;
-
   const lobby = lobbies[gid];
   const gameState = lobby?.gameState;
 

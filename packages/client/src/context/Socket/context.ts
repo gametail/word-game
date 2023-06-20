@@ -24,11 +24,19 @@ export interface IUser {
 }
 
 export type PlayerState = "guessing" | "waiting";
+
+export type TFeedback = "match" | "misplace" | "mismatch";
+
+export interface IHistoryObject {
+  result: TFeedback[];
+  word?: string;
+}
 export interface IPlayerDTO {
   username: string;
   score: number;
   guesses: number;
   state: PlayerState;
+  guessHistory: IHistoryObject[];
 }
 export interface IGameSettings {
   name: string;
