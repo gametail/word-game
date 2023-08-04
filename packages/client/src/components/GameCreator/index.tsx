@@ -1,9 +1,10 @@
-import { useContext, useEffect, useState } from "react";
+import { useContext, useEffect, useRef, useState } from "react";
 import SocketContext from "../../context/Socket/context";
 import { useNavigate } from "react-router-dom";
 
 const GameCreator = () => {
   const { socket } = useContext(SocketContext).SocketState;
+  const modalRef = useRef<HTMLDialogElement>(null);
   const [gameName, setGameName] = useState<string>("");
   const [gamePassword, setGamePassword] = useState<string>("");
   const [gameMaxPlayers, setGameMaxPlayers] = useState<number>(4);
@@ -52,13 +53,18 @@ const GameCreator = () => {
   };
 
   return (
-    <div className="py-4 ">
-      <label htmlFor="my-modal" className="btn btn-wide btn-primary">
-        Create Game
-      </label>
-      <input type="checkbox" id="my-modal" className=" modal-toggle" />
-      <label htmlFor="my-modal" className="cursor-pointer modal">
-        <label className="relative flex flex-col items-center max-w-xs gap-2 modal-box">
+    <div className="py-4">
+      <button
+        className="btn btn-wide btn-primary"
+        onClick={() => modalRef.current?.showModal()}
+      >
+        create game
+      </button>
+      <dialog ref={modalRef} id="game-creator-modal" className="modal">
+        <form
+          method="dialog"
+          className="relative flex flex-col items-center max-w-xs gap-2 modal-box"
+        >
           <h1 className="pb-2 text-2xl font-bold">Game Settings</h1>
 
           <div className="w-full max-w-xs form-control">
@@ -164,8 +170,11 @@ const GameCreator = () => {
               Create
             </button>
           </div>
-        </label>
-      </label>
+        </form>
+        <form method="dialog" className="modal-backdrop">
+          <button>close</button>
+        </form>
+      </dialog>
     </div>
   );
 };

@@ -322,15 +322,16 @@ export class ServerSocket {
         const game = this.gameInstances[gid];
         const players = game.players.map((p) => p.sid);
 
-        const gameUpdate = () => {
-          this.UpdateFrontendLobby(gid);
-          this.SendMessage("reset_round", players);
-        };
+        // const gameUpdate = () => {
+        //   this.UpdateFrontendLobby(gid);
+        //   this.SendMessage("reset_round", players);
+        // };
 
         const started = game.start(sid);
-        // if (started) {
-        //   this.UpdateFrontendLobby(gid);
-        // }
+
+        if (started) {
+          this.UpdateFrontendLobby(gid);
+        }
       } else {
         console.info(`${sid} not in a/this game`);
       }

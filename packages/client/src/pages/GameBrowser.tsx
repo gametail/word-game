@@ -6,7 +6,10 @@ import { RiLock2Line } from "react-icons/ri";
 const GameBrowser = () => {
   const { lobbies, socket } = useContext(SocketContext).SocketState;
 
-  const dialogRef = useRef<HTMLDialogElement>(null);
+  const passwordDialogRef = useRef<HTMLDialogElement>(null);
+  const [gameNameDialog, setGameNameDialog] = useState("");
+  const [gidDialog, setGidDialog] = useState("");
+  const [passwordDialog, setPasswordDialog] = useState("");
 
   const [currentPage, setCurrentPage] = useState(1);
   const lobbiesPerPage = 10;
@@ -19,7 +22,7 @@ const GameBrowser = () => {
 
   const fillerElements = [
     ...Array(lobbiesPerPage - displayedLobbies.length),
-  ].map((item, index) => {
+  ].map((_, index) => {
     return (
       <tr key={index}>
         <td className="w-24 text-center ">-</td>
@@ -38,13 +41,31 @@ const GameBrowser = () => {
 
   return (
     <div className="flex flex-col h-full ">
-      <button className="btn" onClick={() => dialogRef.current?.showModal()}>
-        open modal
-      </button>
-      <dialog ref={dialogRef} id="hello" className="modal">
-        <form method="dialog" className="modal-box">
-          <h3 className="text-lg font-bold">Hello!</h3>
-          <p className="py-4">Press ESC key or click outside to close</p>
+      <dialog ref={passwordDialogRef} id="hello" className="modal">
+        <form
+          method="dialog"
+          className="flex flex-col items-center justify-center gap-2 w-fit modal-box"
+        >
+          <h3 className="text-xl font-bold">{gameNameDialog}</h3>
+          <div className="w-full max-w-xs form-control">
+            <label className=" input-group input-group-vertical">
+              <span className=" bg-primary text-primary-content">
+                Game Password
+              </span>
+              <input
+                type="password"
+                placeholder="Enter Room Password"
+                className="input input-primary input-bordered focus:input-primary"
+                value={passwordDialog}
+                onChange={(ev) => setPasswordDialog(ev.target.value)}
+                onKeyDown={({ key }) => {
+                  if (passwordDialogRef.current?.open && key === "Enter") {
+                    joinGame(gidDialog, passwordDialog);
+                  }
+                }}
+              />
+            </label>
+          </div>
         </form>
         <form method="dialog" className="modal-backdrop">
           <button>close</button>
@@ -54,8 +75,8 @@ const GameBrowser = () => {
       <table className="table w-full grow table-zebra">
         {/* head */}
         <thead>
-          <tr>
-            <th className="w-24 text-center ">#</th>
+          <tr className="text-xl">
+            <th className="w-24 text-center">#</th>
             <th className="w-32 text-center ">Game Status</th>
 
             <th>Lobby Name</th>
@@ -69,9 +90,9 @@ const GameBrowser = () => {
             const { gid, gameSettings, gameState, leaderIndex, players } = item;
 
             const statusColor = {
-              initializing: "text-error",
-              lobby: "text-success",
-              ingame: "text-warning",
+              initializing: "error",
+              lobby: "success",
+              ingame: "warning",
             };
 
             return (
@@ -79,13 +100,23 @@ const GameBrowser = () => {
               <tr
                 className=" hover"
                 key={index}
-                onClick={() => dialogRef.current?.showModal()}
+                onClick={() => {
+                  if (gameSettings.password) {
+                    setGidDialog(gid);
+                    setGameNameDialog(gameSettings.name);
+                    passwordDialogRef.current?.showModal();
+                  } else {
+                    joinGame(gid);
+                  }
+                }}
               >
                 <td className="w-24 text-center ">{firstIndex + index + 1}</td>
-                <td
-                  className={`w-32 text-center capitalize ${statusColor[gameState]}`}
-                >
-                  {gameState}
+                <td>
+                  <div
+                    className={` w-32 capitalize badge badge-lg badge-${statusColor[gameState]}`}
+                  >
+                    {gameState}
+                  </div>
                 </td>
 
                 <td>{gameSettings.name}</td>
