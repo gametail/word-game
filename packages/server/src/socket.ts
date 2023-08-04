@@ -122,9 +122,12 @@ export class ServerSocket {
     });
 
     //join a game instance
-    socket.on("join_game", (gid: string) => {
-      this.JoinGame(gid, socket.id);
-    });
+    socket.on(
+      "join_game",
+      ({ gid, password }: { gid: string; password?: string }) => {
+        this.JoinGame(gid, socket.id, password);
+      }
+    );
 
     //Leave a game instance
     socket.on("leave_game", (gid: string) => {
@@ -138,6 +141,9 @@ export class ServerSocket {
 
     socket.on("check_guess", (guess: string) => {
       const result = this.CheckGuess(guess, socket.id);
+    });
+    socket.on("change_username", (username: string) => {
+      this.ChangeUsername(socket.id, username);
     });
   };
   GenerateGenericUsername = (): string =>
@@ -218,24 +224,24 @@ export class ServerSocket {
     }
 
     //if you create a game you also join it / handles update of lobbies for frontend
-    this.JoinGame(gid, sid);
+    this.JoinGame(gid, sid, gameSettings.password);
   };
 
-  JoinGame = (gid: string, sid: string) => {
+  JoinGame = (gid: string, sid: string, password?: string) => {
     console.info(`${sid} wants to join ${gid}`);
 
     const uid = this.GetUidFromSocketId(sid);
     const user = this.users[uid];
     const game = this.gameInstances[gid];
 
-    if (user.currentGame) {
+    if (user?.currentGame) {
       console.info(`join failed ${sid} is already in a game`);
       return;
     }
 
     if (game) {
-      let error;
-      game.join(user, gid, error);
+      let error: { message: string } = { message: "" };
+      game.join(user, gid, error, password);
 
       if (user.currentGame) {
         let users = this.GetSocketIdsOfUsers();
@@ -248,7 +254,7 @@ export class ServerSocket {
 
         this.SendMessage("update_gid", [sid], gid);
       } else {
-        console.log("could not join");
+        console.log(`could not join: ${error.message}`);
       }
     } else {
       console.info(`game ${gid} does not exist`);
@@ -360,6 +366,30 @@ export class ServerSocket {
       }
 
       this.SendMessage("guess_result", [sid], { evaluation });
+    }
+  };
+  ChangeUsername = (sid: string, username: string) => {
+    if (username.length >= 2 && username.length <= 16) {
+      const uid = this.GetUidFromSocketId(sid);
+      const user = this.users[uid];
+
+      if (user) {
+        user.username = username;
+        const gid = user.currentGame;
+        const game = this.gameInstances[gid];
+        //Update Lobby
+        if (game) {
+          const success = game.changeUsername(sid, username);
+          if (success) {
+            this.UpdateFrontendLobby(gid);
+          }
+        }
+        this.SendMessage("namechange_success", [sid]);
+      } else {
+        console.log("ChangeUsername: User does not exist");
+      }
+    } else {
+      console.log(`ChangeUsername: Username "${username}" invalid`);
     }
   };
 

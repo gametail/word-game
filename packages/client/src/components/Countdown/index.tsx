@@ -3,9 +3,10 @@ import { FC, useEffect, useState } from "react";
 interface ICountdown {
   roundStart: number;
   timeSetting: number;
+  big?: boolean;
 }
 
-const Countdown: FC<ICountdown> = ({ roundStart, timeSetting }) => {
+const Countdown: FC<ICountdown> = ({ roundStart, timeSetting, big }) => {
   const [timeLeft, setTimeLeft] = useState<number>(0);
   const [minutesLeft, setMinutesLeft] = useState<number>(0);
   const [secondsLeft, setSecondsLeft] = useState<number>(0);
@@ -36,26 +37,33 @@ const Countdown: FC<ICountdown> = ({ roundStart, timeSetting }) => {
       setTimeLeft((timeLeft) => timeLeft - 1);
       setMinutesLeft(Math.floor(timeLeft / 60));
       setSecondsLeft(timeLeft % 60);
-      //   console.log(timeLeft, minutesLeft, secondsLeft);
     }, 1000);
 
     return () => clearInterval(interval);
   }, [timeLeft]);
 
   if (timeSetting === 0) {
-    return <span className="mb-4 font-mono text-4xl">&infin;</span>;
+    return (
+      <span className={`mb-2 font-bold text-${big ? "6xl" : "4xl"}`}>
+        &infin;
+      </span>
+    );
   }
 
   if (!(timeLeft > 0)) {
     return (
-      <span className="mb-4 font-mono text-4xl">
+      <span className={`mb-2 font-bold text-${big ? "6xl" : "4xl"}`}>
         {fetchErrorText || "00:00"}
       </span>
     );
   }
 
   return (
-    <span className="mb-4 font-mono text-4xl select-none countdown">
+    <span
+      className={`mb-2 font-bold text-${
+        big ? "6xl" : "4xl"
+      } select-none countdown`}
+    >
       <span style={{ "--value": minutesLeft } as React.CSSProperties}></span>:
       <span style={{ "--value": secondsLeft } as React.CSSProperties}></span>
     </span>

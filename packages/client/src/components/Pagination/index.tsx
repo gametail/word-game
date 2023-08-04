@@ -60,7 +60,7 @@ const Pagination: React.FC<IPagination> = ({
   }
 
   return (
-    <div className={`flex justify-center w-full btn-group ${className}`}>
+    <div className={` flex justify-center w-full btn-group ${className}`}>
       <button className="btn btn-md btn-square" onClick={prevPage}>
         «
       </button>

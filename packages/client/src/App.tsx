@@ -3,13 +3,16 @@ import Home from "./pages/Home";
 import GameTab from "./pages/GameTab";
 import NavBar from "./components/NavBar";
 import GameBrowser from "./pages/GameBrowser";
+import { useThemeStore } from "./hooks/useThemeStore";
 
 function App() {
+  const { theme } = useThemeStore();
+
   return (
-    <div className="flex flex-col h-screen">
+    <div className="flex flex-col h-screen " data-theme={theme}>
       <NavBar>
         <Link to="/" className="text-2xl font-extrabold select-none ">
-          WORDL ROYALE
+          WORD BATTLE
         </Link>
         <Link to="/game">Game</Link>
         <Link to="/browser">Browser</Link>

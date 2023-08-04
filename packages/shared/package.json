@@ -1,0 +1,10 @@
+{
+  "name": "@wordlroyale/shared",
+  "version": "1.0.0",
+  "description": "",
+  "type": "module",
+  "exports": "./*.ts",
+  "keywords": [],
+  "author": "",
+  "license": "ISC"
+}

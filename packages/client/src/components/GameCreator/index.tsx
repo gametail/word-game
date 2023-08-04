@@ -69,14 +69,14 @@ const GameCreator = () => {
               <input
                 type="text"
                 placeholder="Game of Username"
-                className=" input input-bordered focus:input-primary"
+                className=" input input-primary input-bordered focus:input-primary"
                 value={gameName}
                 onChange={(ev) => setGameName(ev.target.value)}
               />
             </label>
           </div>
 
-          {/* <div className="w-full max-w-xs form-control ">
+          <div className="w-full max-w-xs form-control">
             <label className=" input-group input-group-vertical">
               <span className=" bg-primary text-primary-content">
                 Game Password
@@ -84,12 +84,12 @@ const GameCreator = () => {
               <input
                 type="password"
                 placeholder="Type Password"
-                className=" input input-bordered focus:input-primary"
+                className="input input-primary input-bordered focus:input-primary"
                 value={gamePassword}
                 onChange={(ev) => setGamePassword(ev.target.value)}
               />
             </label>
-          </div> */}
+          </div>
 
           <div className="w-full max-w-xs form-control">
             <label className=" input-group input-group-vertical">
@@ -99,7 +99,7 @@ const GameCreator = () => {
               <input
                 type="number"
                 placeholder="Game of Username"
-                className="input input-bordered focus:input-primary"
+                className="input input-primary input-bordered focus:input-primary"
                 value={gameMaxPlayers}
                 min={1}
                 max={20}
@@ -113,7 +113,7 @@ const GameCreator = () => {
               <input
                 type="number"
                 placeholder="Rounds"
-                className="input input-bordered focus:input-primary"
+                className="input input-primary input-bordered focus:input-primary"
                 value={gameRounds}
                 min={1}
                 max={10}
@@ -129,7 +129,7 @@ const GameCreator = () => {
               <input
                 type="number"
                 placeholder="Guesses Per Player"
-                className="input input-bordered focus:input-primary"
+                className="input input-primary input-bordered focus:input-primary"
                 value={gameGuessesPerRound}
                 min={1}
                 max={10}
@@ -148,11 +148,13 @@ const GameCreator = () => {
                 defaultValue={gameTimePerRound}
               >
                 <option disabled>Choose Round Length...</option>
-                {[0, 60, 70, 80, 90, 100, 110, 120].map((time) => (
-                  <option key={time} value={time}>
-                    {time === 0 ? "Infinite" : `${time} Seconds`}
-                  </option>
-                ))}
+                {[0, 60, 70, 80, 90, 100, 110, 120, 180, 240, 300].map(
+                  (time) => (
+                    <option key={time} value={time}>
+                      {time === 0 ? "Infinite" : `${time} Seconds`}
+                    </option>
+                  )
+                )}
               </select>
             </label>
           </div>

@@ -1,5 +1,6 @@
 import React, { useContext, useEffect, useState } from "react";
 import SocketContext from "../../context/Socket/context";
+import { RiFlashlightLine, RiSignalWifiOffLine } from "react-icons/ri";
 
 interface ISocketStatus {
   nav?: boolean;
@@ -31,13 +32,19 @@ const SocketStatus: React.FC<ISocketStatus> = ({ nav }) => {
 
   return (
     <div
-      className={` select-none stats ${nav && "ml-auto w-[200px]"} ${
+      className={` select-none stats ${nav && "w-[200px]"} ${
         connected ? " bg-success" : " bg-error"
       } `}
     >
       <div className={` stat ${nav && "px-4 py-1"}`}>
         <div className={`"scale-[150%]" ${nav && "scale-[120%]"} stat-figure`}>
-          <div>{connected ? "⚡" : "❌"}</div>
+          <div>
+            {connected ? (
+              <RiFlashlightLine size={25} className=" text-success-content" />
+            ) : (
+              <RiSignalWifiOffLine size={25} className=" text-error-content" />
+            )}
+          </div>
         </div>
         <div
           className={`stat-title text-xs text-center  ${

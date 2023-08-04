@@ -66,8 +66,6 @@ const SocketContextComponent: React.FC<ISocketContextComponentProps> = ({
 
     //update lobbies event
     socket.on("update_lobby", (lobby: { [gid: string]: ILobby }) => {
-      console.info("lobby added");
-
       // SocketDispatch({ type: "update_lobby", payload: lobby });
       SocketDispatch({ type: "update_lobby", payload: lobby });
     });
@@ -124,7 +122,6 @@ const SocketContextComponent: React.FC<ISocketContextComponentProps> = ({
         SocketDispatch({ type: "update_uid", payload: uid });
         SocketDispatch({ type: "update_username", payload: username });
         SocketDispatch({ type: "update_users", payload: users });
-        console.log(lobbies);
         SocketDispatch({ type: "update_lobbies", payload: lobbies });
       }
     );

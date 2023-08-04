@@ -40,7 +40,7 @@ const StatTracker = () => {
   }, [lobby.players[lobby.selfIndex].score]);
 
   return (
-    <div className="overflow-hidden shadow stats bg-neutral">
+    <div className="overflow-hidden shadow select-none stats bg-neutral">
       <div
         className={`px-4 py-2 stat place-items-center ${
           playRoundAnim && " animate-jump"
@@ -50,9 +50,9 @@ const StatTracker = () => {
         <div className=" stat-figure text-accent">
           <RiRefreshFill size={iconSize} />
         </div>
-        <div className="stat-title">Round</div>
+        <div className="stat-title text-neutral-content">Round</div>
         <div className=" stat-value text-accent">{lobby.currentRound}</div>
-        <div className="stat-desc ">
+        <div className="stat-desc text-neutral-content ">
           {lobby.gameSettings.rounds - lobby.currentRound} rounds left
         </div>
       </div>
@@ -66,11 +66,11 @@ const StatTracker = () => {
         <div className="stat-figure text-secondary ">
           <RiHeartPulseFill size={iconSize} />
         </div>
-        <div className="stat-title">Guesses Left</div>
+        <div className="stat-title text-neutral-content">Guesses Left</div>
         <div className="stat-value text-secondary">
           {lobby.players[lobby.selfIndex].guesses}
         </div>
-        <div className="stat-desc">
+        <div className="stat-desc text-neutral-content">
           of total {lobby.gameSettings.guesses} guesses
         </div>
       </div>
@@ -83,11 +83,11 @@ const StatTracker = () => {
         <div className=" stat-figure text-info">
           <RiTrophyFill size={iconSize} />
         </div>
-        <div className="stat-title ">Score</div>
+        <div className="stat-title text-neutral-content ">Score</div>
         <div className="stat-value text-info">
           {lobby.players[lobby.selfIndex].score}
         </div>
-        <div className="stat-desc">placing you at #1</div>
+        <div className="stat-desc text-neutral-content">placing you at #1</div>
       </div>
     </div>
   );

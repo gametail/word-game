@@ -44,6 +44,7 @@ export interface IGameSettings {
   guesses: number;
   rounds: number;
   time: number;
+  password: boolean;
 }
 
 export interface ILobby {
@@ -55,6 +56,16 @@ export interface ILobby {
   players: IPlayerDTO[];
   currentRound: number;
   roundStart: number | undefined;
+  lastGameSnapshot: IGameSnapshot;
+}
+export interface IGameSnapshot {
+  roundstart: number;
+  words: string[];
+  players: {
+    username: string;
+    score: number;
+    guessHistory: IHistoryObject[];
+  }[];
 }
 
 export type TSocketContextActions =

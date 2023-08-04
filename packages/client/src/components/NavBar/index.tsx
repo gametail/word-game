@@ -1,6 +1,7 @@
 import React, { Dispatch, SetStateAction, useContext } from "react";
 import { LinkProps } from "react-router-dom";
 import SocketStatus from "../SocketStatus";
+import ThemeChanger from "../ThemeChanger";
 
 interface INavBar {
   children: React.ReactElement<LinkProps> | React.ReactElement<LinkProps>[];
@@ -16,8 +17,10 @@ const NavBar: React.FC<INavBar> = ({ children }) => {
   );
 
   return (
-    <div className="shadow-md navbar bg-neutral text-neutral-content">
+    <div className="z-50 shadow-md navbar bg-neutral text-neutral-content">
       {styledChildren}
+      <div className="ml-auto "></div>
+      <ThemeChanger />
       <SocketStatus nav />
     </div>
   );

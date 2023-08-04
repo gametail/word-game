@@ -1,3 +1,5 @@
+import { RiVipCrownFill } from "react-icons/ri";
+
 interface IUserAvatar {
   name: string;
   self?: boolean;
@@ -11,7 +13,7 @@ const UserAvatar: React.FC<IUserAvatar> = ({ name, self, leader }) => {
     <div className={`avatar placeholder ${leader && "indicator"}`}>
       {leader && (
         <span className="text-3xl bg-transparent border-none indicator-item indicator-center badge">
-          👑
+          <RiVipCrownFill size={40} className=" text-primary" />
         </span>
       )}
       <div

@@ -39,14 +39,23 @@ export interface IGameSettings {
   rounds: number;
   time: number;
 }
+export interface IGameSettingsDTO {
+  name: string;
+  password: boolean;
+  maxPlayers: number;
+  guesses: number;
+  rounds: number;
+  time: number;
+}
 export interface IGameDTO {
   gameState: GameState;
-  gameSettings: IGameSettings;
+  gameSettings: IGameSettingsDTO;
   leaderIndex: number;
   selfIndex: number;
   players: IPlayerDTO[];
   currentRound: number;
   roundStart: number | undefined;
+  lastGameSnapshot: IGameSnapshot;
 }
 export interface IPlayerDTO {
   username: string;
@@ -54,6 +63,16 @@ export interface IPlayerDTO {
   guesses: number;
   state: PlayerState;
   guessHistory: IHistoryObject[];
+}
+
+interface IGameSnapshot {
+  roundstart: number;
+  words: string[];
+  players: {
+    username: string;
+    score: number;
+    guessHistory: IHistoryObject[];
+  }[];
 }
 
 export class WordGame {
@@ -66,6 +85,7 @@ export class WordGame {
   currentRound: number;
   roundStart: number | undefined;
   words: string[];
+  lastGameSnapshot: IGameSnapshot | undefined;
   SendMessageFn: (eventName: string, users: string[], payload?: Object) => void;
 
   constructor(
@@ -84,6 +104,7 @@ export class WordGame {
     this.currentRound = 1;
     this.roundStart = undefined;
     this.words = [];
+    this.lastGameSnapshot = undefined;
     this.timeout = undefined;
     this.SendMessageFn = SendMessageFn;
 
@@ -156,32 +177,34 @@ export class WordGame {
         this.currentRound++;
         this.startRound();
       } else {
+        //game finished due to time
+        this.lastGameSnapshot = this.createGameSnapshot();
+
         this.gameState = "lobby";
 
-        const test = this.players.reduce((acc, { sid }) => {
+        const updatedLobbies = this.players.reduce((acc, { sid }) => {
           acc[sid] = { [this.gid]: this.getGameDTO(sid) };
           return acc;
         }, {} as TPayloadMap);
 
-        console.log(test);
+        // console.log(updatedLobbies);
 
-        // this.SendMessage();
-        this.SendMessageToPlayers("update_lobby", this.players, test);
+        this.SendMessageToPlayers("update_lobby", this.players, updatedLobbies);
         this.SendMessageToPlayers("reset_round", this.players);
+        this.SendMessageToPlayers("show_postgame", this.players);
 
         console.info("game finished");
       }
     }, gameSeconds * 1000);
 
-    // this.SendMessage();
-    const test = this.players.reduce((acc, { sid }) => {
+    const updatedLobbies = this.players.reduce((acc, { sid }) => {
       acc[sid] = { [this.gid]: this.getGameDTO(sid) };
       return acc;
     }, {} as TPayloadMap);
 
-    console.log(test);
+    // console.log(updatedLobbies);
 
-    this.SendMessageToPlayers("update_lobby", this.players, test);
+    this.SendMessageToPlayers("update_lobby", this.players, updatedLobbies);
     this.SendMessageToPlayers("reset_round", this.players);
   }
   resetGame() {
@@ -194,31 +217,31 @@ export class WordGame {
     user: IUser,
     gid: string,
     // callback: (success: boolean, message?: string) => void,
-    error: string,
+    error: { message: string },
     password?: string
   ): void {
     //check if game is initializing
     if (this.gameState === "initializing") {
-      error = "game is still initializing";
+      error.message = "game is still initializing";
       return;
     }
 
     if (this.isGameFull()) {
-      error = "game is full.";
+      error.message = "game is full.";
       return;
     }
     if (this.isGameRunning()) {
-      error = "game is already running.";
+      error.message = "game is already running.";
       return;
     }
 
     if (this.gameSettings.password && this.gameSettings.password !== password) {
-      error = "wrong password.";
+      error.message = "wrong password.";
       return;
     }
     //check if player already joined
     if (this.getPlayer(user.sid)) {
-      error = "is already joined.";
+      error.message = "is already joined.";
       return;
     }
 
@@ -252,6 +275,14 @@ export class WordGame {
 
   getPlayers(): IPlayer[] {
     return this.players;
+  }
+  changeUsername(sid: string, username: string): boolean {
+    const player = this.players.find((player) => player.sid === sid);
+    if (player) {
+      player.username = username;
+      return true;
+    }
+    return false;
   }
   getCurrentWord(): string {
     return this.words[this.currentRound - 1];
@@ -307,14 +338,18 @@ export class WordGame {
 
     const gameDTO: IGameDTO = {
       gameState: this.gameState,
-      gameSettings: { ...this.gameSettings },
+      gameSettings: { ...this.gameSettings, password: false },
       leaderIndex: this.leaderIndex,
       selfIndex: selfIndex,
       players: playersDTO,
       roundStart: this.roundStart,
       currentRound: this.currentRound,
+      lastGameSnapshot: this.lastGameSnapshot,
     };
-    delete gameDTO.gameSettings.password;
+
+    if (this.gameSettings.password) {
+      gameDTO.gameSettings.password = true;
+    }
 
     return gameDTO;
   }
@@ -348,6 +383,9 @@ export class WordGame {
           this.currentRound++;
           this.startRound();
         } else {
+          //game finished due to players waiting
+          this.lastGameSnapshot = this.createGameSnapshot();
+
           this.gameState = "lobby";
 
           this.SendMessageToPlayers(
@@ -359,6 +397,7 @@ export class WordGame {
             }, {} as TPayloadMap)
           );
           this.SendMessageToPlayers("reset_round", this.players);
+          this.SendMessageToPlayers("show_postgame", this.players);
 
           console.info("game finished");
         }
@@ -428,7 +467,7 @@ export class WordGame {
     if (IsInList(guess)) {
       if (this.getCurrentWord() === guess) {
         player.score = this.calculateScore(player);
-        console.log(player.guessHistory);
+        // console.log(player.guessHistory);
         const result: TFeedback[] = [
           "match",
           "match",
@@ -440,23 +479,36 @@ export class WordGame {
           result,
           word: guess,
         });
-        console.log(player.guessHistory);
         this.changePlayerState(sid, "waiting");
 
         return { evaluation: "correct", result };
       } else {
-        this.reducePlayerGuesses(sid);
-
         const result = this.compareWord(guess, this.getCurrentWord());
         player.guessHistory.push({
           result,
           word: guess,
         });
-        console.log(player.guessHistory);
+
+        this.reducePlayerGuesses(sid);
         return { evaluation: "incorrect", result };
       }
     } else {
       return { evaluation: "invalid" };
     }
+  }
+
+  createGameSnapshot(): IGameSnapshot {
+    const playersSnapshotDTO = this.players.map((player) => {
+      return {
+        username: player.username,
+        score: player.score,
+        guessHistory: player.guessHistory,
+      };
+    });
+    return {
+      roundstart: this.roundStart,
+      words: this.words,
+      players: playersSnapshotDTO,
+    };
   }
 }

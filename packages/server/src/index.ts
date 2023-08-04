@@ -57,9 +57,40 @@ app.get("/time", (req, res, next) => {
 
 //Socket information
 app.get("/status", (req, res, next) => {
+  const games = Object.entries(ServerSocket.instance.gameInstances).reduce(
+    (acc, curr) => {
+      return (acc[curr[0]] = {
+        gid: curr[1].gid,
+        players: curr[1].players,
+        leaderIndex: curr[1].leaderIndex,
+        gameState: curr[1].gameState,
+        gameSettings: curr[1].gameSettings,
+        // timeout: curr[1].timeout ? curr[1].timeout : "none",
+        currentRound: curr[1].currentRound,
+        roundStart: curr[1].roundStart
+          ? new Date(curr[1].roundStart).toISOString()
+          : "none",
+        words: curr[1].words,
+      });
+    },
+
+    {}
+  );
+
   return res.status(200).json({
     users: ServerSocket.instance.users,
-    gameInstances: ServerSocket.instance.gameInstances,
+    gameInstances: games,
+  });
+});
+
+app.get("/shazam", (req, res, next) => {
+  const gameWords = Object.entries(ServerSocket.instance.gameInstances).reduce(
+    (acc, curr) => (acc[curr[0]] = { words: curr[1].words }),
+    {}
+  );
+
+  return res.status(200).json({
+    gameWords,
   });
 });
 
